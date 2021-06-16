@@ -10,6 +10,7 @@ void C2V1()
 {
 
     // Open the output file
+    // TFile* output_file = new TFile("/home/users/joytzphysics/plots/VBSWWH_1.root", "RECREATE");
     TFile* output_file = new TFile("/home/jotimelord/physicsReader/VBSWWH_1.root", "RECREATE");
 
     // Create histograms for invariant masses & rapidity
@@ -94,15 +95,19 @@ void C2V1()
         {-TMath::Pi(), TMath::Pi()}, // VBF1
         {-TMath::Pi(), TMath::Pi()}, // MET
     };
+
+
     //Cross section value
     Double_t cs = 0.018 * 137;
 
     //Create histograms for invariant masses & rapidity
-    TH1F* wBoson = new TH1F("wBoson", "Mass of W Bosons", 20000, 0, 300);
-    TH1F* higg = new TH1F("higg", "Mass of Higgs", 10000, 0, 300);
+    TH1F* massW = new TH1F("massW", "Invariant mass of W Bosons", 20000, 0, 300);
+    TH1F* massH = new TH1F("massH", "Invariant mass of Higgs", 10000, 100, 150);
     TH1F* rapidWlead = new TH1F("rapidWlead", "Rapidity of leading W Bosons relative to the Z axis", 10000, -100, 100);
     TH1F* rapidWsub = new TH1F("rapidWsub", "Rapidity of subleading W Bosons relative to the Z axis", 10000, -100, 100);
     TH1F* rapidHigg = new TH1F("rapidHigg", "Rapidity of Higgs relative to the Z axis", 10000, -100, 100);
+    TH1F* deltaEta = new TH1F("deltaEta", "Delta Eta of VBF quarks", 10000, -10, 10);
+    TH1F* massVBF = new TH1F("massVBF", "Invariant mass of VBF quarks", 20000, -5, 5);
 
     // Create an array of histograms
     std::vector<TH1F*> histograms_pt;
@@ -118,11 +123,13 @@ void C2V1()
         histograms_eta.push_back(new TH1F(TString::Format("eta%s", hist_shortname_types[i].Data()), TString::Format("eta of %s", hist_types[i].Data()), nbins, hist_eta_ranges[i].first, hist_eta_ranges[i].second));
         histograms_phi.push_back(new TH1F(TString::Format("phi%s", hist_shortname_types[i].Data()), TString::Format("phi of %s", hist_types[i].Data()), nbins, hist_phi_ranges[i].first, hist_phi_ranges[i].second));
     }
+
     // =================================================================================================================
     // Do your stuff
     // -----------------------------------------------------------------------------------------------------------------
 
     // Open the root file
+    // TFile* f = TFile::Open("/home/users/joytzphysics/plots/VBSWWH_1_cmsgrid_final.root");
     TFile* f = TFile::Open("/home/jotimelord/physicsReader/VBSWWH_1_cmsgrid_final.root");
 
     // Simple pointer t
@@ -182,10 +189,12 @@ void C2V1()
         vector<ROOT::Math::LorentzVector<ROOT::Math::PxPyPzE4D<float>>> wB;
         const auto mW1 = (Neu[0] + Muon[0]).M();
         const auto mW2 = (Neu[0] + Muon[1]).M(); 
-        // std::cout << mW1 << endl;
+
         if (TMath::Abs(mW1 - 80) < TMath::Abs(mW2 - 80)) {
             wB.push_back((Neu[0] + Muon[0]));
             wB.push_back((Neu[1] + Muon[1]));
+            wB.push_back((Neu[0] + Muon[1]));
+            wB.push_back((Neu[1] + Muon[0]));
         }
         else {
             wB.push_back((Neu[0] + Muon[1]));
@@ -193,21 +202,25 @@ void C2V1()
         }
         ordered[kW0] = leading(wB);
         ordered[kW1] = subleading(wB);
+
         //fill histograms
-        
-        for (unsigned int n = 0; n < 10; n++) {
+        for (unsigned int n = 0; n < NObjects; n++) {
             histograms_pt[n]->Fill(ordered[n].Pt());
             histograms_eta[n]->Fill(ordered[n].Eta());
             histograms_phi[n]->Fill(ordered[n].Phi());
-        } 
+        }
         //std::cout << ordered[kW0].M() << endl;
-        wBoson->Fill(ordered[kW0].M());
-        wBoson->Fill(ordered[kW1].M());
-        higg->Fill(ordered[kHiggs].M());
+	deltaEta->Fill(TMath::Abs(ordered[kVBF0].Eta()-ordered[kVBF1].Eta()));
         rapidWlead->Fill(ordered[kW0].Rapidity());
         rapidWsub->Fill(ordered[kW1].Rapidity());
         rapidHigg->Fill(ordered[kHiggs].Rapidity()); 
+	massW->Fill(ordered[kW0].M());
+	massW->Fill(ordered[kW1].M());
+	massH->Fill(ordered[kHiggs].M());
+	massVBF->Fill(ordered[kVBF0].M());
+	massVBF->Fill(ordered[kVBF1].M());
     }
+    
      // Go to the output file and write the file
     output_file->cd(); // (TFile has a weird "ownership" that can be confusing...)
     for (Int_t i = 0; i < NObjects; ++i) {
@@ -218,17 +231,20 @@ void C2V1()
         histograms_pt[i]->Write();
         histograms_phi[i]->Write();
     }
-    wBoson->Scale(cs / (wBoson->Integral()));
-    wBoson->Write();
-    higg->Scale(cs / (higg->Integral()));
-    higg->Write();
+    massW->Scale(cs / (massW->Integral()));
+    massW->Write();
+    massH->Scale(cs / (massH->Integral()));
+    massH->Write();
+    massVBF->Scale(cs / (massVBF->Integral()));
+    massVBF->Write();
     rapidWlead->Scale(cs / (rapidWlead->Integral()));
     rapidWlead->Write();
     rapidWsub->Scale(cs / (rapidWsub->Integral()));
     rapidWsub->Write();
     rapidHigg->Scale(cs / (rapidHigg->Integral()));
     rapidHigg->Write();
-
+    deltaEta->Scale(cs / (deltaEta->Integral()));
+    deltaEta->Write();
     output_file->Close(); 
 }
 
